@@ -56,6 +56,9 @@ export class SobelFilter {
     // Grayscale is false by default
     this.options.grayscale = options?.grayscale || false;
 
+    // Normalize output for display by default
+    this.options.normalizeOutputForDisplay = options?.normalizeOutputForDisplay ?? true;
+
     // Validate kernel size
     if (!isValidKernelSize(this.kernelSize)) {
       throw new Error(
@@ -77,7 +80,7 @@ export class SobelFilter {
    * Applies the Sobel filter to a TensorFlow.js tensor
    * 
    * @param input Input tensor of shape [height, width, channels]
-   * @returns Output tensor with the Sobel filter applied
+   * @returns Output tensor with the Sobel filter applied, normalized to [0, 1] if options.normalizeOutputForDisplay is true
    */
   public applyToTensor(input: tf.Tensor3D): tf.Tensor3D {
     console.log("SobelFilter.applyToTensor - Input tensor shape:", input.shape);
@@ -85,7 +88,8 @@ export class SobelFilter {
       kernelSize: this.kernelSize,
       output: this.output,
       grayscale: this.options.grayscale,
-      normalizationRange: this.options.normalizationRange || [0, 1]
+      normalizationRange: this.options.normalizationRange || [0, 1],
+      normalizeOutputForDisplay: this.options.normalizeOutputForDisplay
     });
 
     // Peek at some values of the input tensor
@@ -168,13 +172,41 @@ export class SobelFilter {
 
             // Remove the batch dimension: output shape becomes [height, width, channels]
             const squeezedOutput = output.squeeze([0]) as tf.Tensor3D;
-            console.log("Final output tensor shape:", squeezedOutput.shape);
+            console.log("Final output tensor shape (before potential normalization):", squeezedOutput.shape);
 
             // Sample output tensor values
             const sampleValues = squeezedOutput.slice([0, 0, 0], [1, 1, squeezedOutput.shape[2]]).dataSync();
-            console.log("Sample values from output:", Array.from(sampleValues));
+            console.log("Sample values from output (before potential normalization):", Array.from(sampleValues));
 
-            return squeezedOutput;
+            // --- Conditional Normalization Step --- 
+            if (this.options.normalizeOutputForDisplay) {
+              console.log("[NORMALIZE] Normalizing final output tensor to [0, 1] as requested");
+              const finalNormalizedTensor = tf.tidy(() => {
+                const min = squeezedOutput.min();
+                const max = squeezedOutput.max();
+                const range = max.sub(min);
+                const normalized = tf.where(
+                  range.greater(0),
+                  squeezedOutput.sub(min).div(range),
+                  tf.zerosLike(squeezedOutput)
+                ) as tf.Tensor3D;
+
+                const normMin = normalized.min().dataSync()[0];
+                const normMax = normalized.max().dataSync()[0];
+                console.log(`[NORMALIZE] Output range after normalization: [${normMin}, ${normMax}]`);
+
+                return normalized;
+              });
+              // Dispose the intermediate unnormalized tensor
+              squeezedOutput.dispose();
+              return finalNormalizedTensor;
+            } else {
+              // Return the unnormalized tensor if normalization is disabled
+              console.log("[NORMALIZE] Skipping normalization as requested");
+              return squeezedOutput;
+            }
+            // --------------------------------------
+
           } finally {
             // Clean up the kernels
             sobelXKernel.dispose();
@@ -410,7 +442,8 @@ export class SobelFilter {
       kernelSize: this.kernelSize,
       output: this.output,
       grayscale: this.options.grayscale,
-      normalizationRange: this.options.normalizationRange
+      normalizationRange: this.options.normalizationRange,
+      normalizeOutputForDisplay: this.options.normalizeOutputForDisplay
     };
   }
 
@@ -448,6 +481,11 @@ export class SobelFilter {
 
     if (options.normalizationRange !== undefined) {
       this.options.normalizationRange = options.normalizationRange;
+    }
+
+    // Update the new normalization option
+    if (options.normalizeOutputForDisplay !== undefined) {
+      this.options.normalizeOutputForDisplay = options.normalizeOutputForDisplay;
     }
   }
 

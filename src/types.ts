@@ -25,6 +25,9 @@ export interface SobelOptions {
 
   /** Whether to convert RGB images to grayscale before processing */
   grayscale?: boolean;
+
+  /** Normalize final output to [0, 1] */
+  normalizeOutputForDisplay?: boolean;
 }
 
 /**
