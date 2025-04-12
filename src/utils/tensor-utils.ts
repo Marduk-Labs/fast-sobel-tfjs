@@ -43,10 +43,10 @@ export function normalizeTensor(
   max: number = 255
 ): tf.Tensor {
   return tf.tidy(() => {
-    // Get min and max values
+    // Original normalization logic for all cases
+    console.log('[normalizeTensor] Applying standard normalization.');
     const minVal = tensor.min();
     const maxVal = tensor.max();
-
     // Avoid division by zero
     const range = tf.maximum(tf.sub(maxVal, minVal), tf.scalar(1e-6));
 
@@ -54,7 +54,15 @@ export function normalizeTensor(
     const normalized = tf.div(tf.sub(tensor, minVal), range);
 
     // Scale to target range
-    return tf.add(tf.mul(normalized, tf.scalar(max - min)), tf.scalar(min));
+    const result = tf.add(tf.mul(normalized, tf.scalar(max - min)), tf.scalar(min));
+
+    // Clean up
+    minVal.dispose();
+    maxVal.dispose();
+    range.dispose();
+    normalized.dispose();
+
+    return result;
   });
 }
 
@@ -68,21 +76,78 @@ export function normalizeTensor(
 export function ensureGrayscaleIfNeeded(
   input: tf.Tensor3D,
   grayscale: boolean
-): { tensor: tf.Tensor3D, newTensorCreated: boolean } {
-  const channels = input.shape[2];
+): { tensor: tf.Tensor3D; newTensorCreated: boolean } {
+  const [height, width, channels] = input.shape;
 
-  // If grayscale conversion is requested and input is RGB
-  if (grayscale && channels === 3) {
-    // Convert RGB to grayscale
-    return {
-      tensor: tf.image.rgbToGrayscale(input),
-      newTensorCreated: true
-    };
+  // Ensure float32
+  const floatInput = input.dtype === 'float32' ? input : input.toFloat();
+  const createdFloatTensor = floatInput !== input;
+
+  if (createdFloatTensor) {
+    console.log("Converted input to float32");
   }
 
-  // No conversion needed
-  return {
-    tensor: input,
-    newTensorCreated: false
-  };
+  // --- Channel Handling Logic ---
+
+  // Case 1: Grayscale is ON
+  if (grayscale) {
+    if (channels === 4) {
+      // RGBA input, need grayscale -> Slice alpha, then convert RGB to Gray
+      console.log("Grayscale ON: Slicing off alpha from RGBA.");
+      const rgbTensor = tf.tidy(() => floatInput.slice([0, 0, 0], [-1, -1, 3]) as tf.Tensor3D);
+      if (createdFloatTensor) floatInput.dispose(); // Dispose intermediate float tensor
+
+      console.log("Grayscale ON: Converting sliced RGB to grayscale.");
+      const grayTensor = tf.image.rgbToGrayscale(rgbTensor);
+      rgbTensor.dispose(); // Dispose intermediate RGB tensor
+
+      return {
+        tensor: grayTensor,
+        newTensorCreated: true // Always true since we converted
+      };
+    } else if (channels === 3) {
+      // RGB input, need grayscale -> Convert RGB to Gray
+      console.log("Grayscale ON: Converting RGB to grayscale.");
+      if (createdFloatTensor) floatInput.dispose(); // Dispose intermediate float tensor if created
+      const grayTensor = tf.image.rgbToGrayscale(floatInput);
+      return {
+        tensor: grayTensor,
+        newTensorCreated: true // Always true since we converted
+      };
+    } else if (channels === 1) {
+      // Already grayscale, do nothing
+      console.log("Grayscale ON: Input is already 1 channel.");
+      return { tensor: floatInput, newTensorCreated: createdFloatTensor };
+    } else {
+      // Unsupported channel count for grayscale
+      console.warn(`Grayscale ON: Unsupported channel count ${channels}. Returning original tensor.`);
+      return { tensor: floatInput, newTensorCreated: createdFloatTensor };
+    }
+  }
+
+  // Case 2: Grayscale is OFF
+  else {
+    if (channels === 4) {
+      // RGBA input, grayscale OFF -> Slice off alpha, process as RGB
+      console.log("Grayscale OFF: Slicing off alpha from RGBA to process as RGB.");
+      const rgbTensor = tf.tidy(() => floatInput.slice([0, 0, 0], [-1, -1, 3]) as tf.Tensor3D);
+      if (createdFloatTensor) floatInput.dispose(); // Dispose intermediate float tensor
+      return {
+        tensor: rgbTensor,
+        newTensorCreated: true // Always true since we sliced
+      };
+    } else if (channels === 3) {
+      // RGB input, grayscale OFF -> Process as is
+      console.log("Grayscale OFF: Processing RGB input as is.");
+      return { tensor: floatInput, newTensorCreated: createdFloatTensor };
+    } else if (channels === 1) {
+      // Grayscale input, grayscale OFF -> Process as is
+      console.log("Grayscale OFF: Processing 1-channel input as is.");
+      return { tensor: floatInput, newTensorCreated: createdFloatTensor };
+    } else {
+      // Unsupported channel count
+      console.warn(`Grayscale OFF: Unsupported channel count ${channels}. Returning original tensor.`);
+      return { tensor: floatInput, newTensorCreated: createdFloatTensor };
+    }
+  }
 }
