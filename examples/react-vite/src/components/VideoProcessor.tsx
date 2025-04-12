@@ -15,6 +15,8 @@ const VideoProcessor = () => {
     const [processingTime, setProcessingTime] = useState<number>(0);
     const [frameCount, setFrameCount] = useState<number>(0);
     const [lowQualityMode, setLowQualityMode] = useState<boolean>(false);
+    const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+    const [currentDeviceId, setCurrentDeviceId] = useState<string | undefined>(undefined);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const resultCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,18 +72,93 @@ const VideoProcessor = () => {
         }
     }, [kernelSize, outputFormat, useGrayscale]);
 
+    // --- Device Management ---
+    // Load available video input devices
+    const loadDevices = async () => {
+        try {
+            console.log("[DEVICES] Enumerating devices...");
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            console.log(`[DEVICES] Found ${videoDevices.length} video devices:`, videoDevices);
+            setAvailableDevices(videoDevices);
+            // Set the first device as default if none is selected and devices are available
+            if (videoDevices.length > 0 && !currentDeviceId) {
+                console.log(`[DEVICES] Setting default deviceId: ${videoDevices[0].deviceId}`);
+                setCurrentDeviceId(videoDevices[0].deviceId);
+            }
+        } catch (err) {
+            console.error("[DEVICES] Error enumerating devices:", err);
+            setError("Could not list camera devices.");
+        }
+    };
+
+    // Effect to load devices on mount
+    useEffect(() => {
+        loadDevices();
+    }, []);
+
+    // Switch to the next available camera
+    const switchCamera = async () => {
+        if (availableDevices.length <= 1) {
+            console.log("[DEVICES] No other camera to switch to.");
+            return; // No other devices to switch to
+        }
+
+        console.log("[DEVICES] Attempting to switch camera...");
+        const currentIndex = availableDevices.findIndex(device => device.deviceId === currentDeviceId);
+        const nextIndex = (currentIndex + 1) % availableDevices.length;
+        const nextDevice = availableDevices[nextIndex];
+        console.log(`[DEVICES] Switching from device ${currentIndex} (${currentDeviceId}) to ${nextIndex} (${nextDevice.deviceId})`);
+
+        // Stop current stream before switching
+        stopStream();
+
+        // Update the current device ID
+        setCurrentDeviceId(nextDevice.deviceId);
+
+        // Give the stream a moment to fully stop before restarting
+        // This can sometimes help avoid race conditions
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Restart the stream with the new device ID
+        console.log("[DEVICES] Restarting stream with new device...");
+        startStream();
+    };
+
     // Start the webcam stream
     const startStream = async () => {
         try {
             console.log("[WEBCAM] Requesting camera access");
             setError(null);
             setFrameCount(0); // Reset frame count
-            const constraints = {
+
+            // --- Select Device --- 
+            // Ensure devices are loaded before attempting to stream
+            if (availableDevices.length === 0) {
+                console.log("[WEBCAM] No devices loaded yet, attempting to load...");
+                await loadDevices();
+                // Check again after loading
+                if (availableDevices.length === 0) {
+                    setError("No camera devices found.");
+                    console.error("[WEBCAM] No camera devices found after loading.");
+                    return;
+                }
+                // If devices were loaded, currentDeviceId should now be set by loadDevices
+                // If not, we'll rely on the default behavior below
+            }
+
+            console.log(`[WEBCAM] Using deviceId: ${currentDeviceId || 'default'}`);
+
+            const constraints: MediaStreamConstraints = {
                 video: {
                     width: { ideal: 640 },
                     height: { ideal: 480 },
+                    // Specify the exact device ID if one is selected
+                    ...(currentDeviceId && { deviceId: { exact: currentDeviceId } })
                 }
             };
+
+            console.log("[WEBCAM] Using constraints:", constraints);
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             console.log("[WEBCAM] Camera access granted");
@@ -486,6 +563,18 @@ const VideoProcessor = () => {
                             className="px-4 py-2 bg-accent text-white rounded shadow hover:bg-accent-light transition-colors"
                         >
                             Start Camera
+                        </button>
+                    )}
+
+                    {availableDevices.length > 1 && (
+                        <button
+                            onClick={switchCamera}
+                            className="px-4 py-2 bg-sky-500 text-white rounded shadow hover:bg-sky-400 transition-colors flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                            </svg>
+                            Switch Camera ({availableDevices.findIndex(d => d.deviceId === currentDeviceId) + 1}/{availableDevices.length})
                         </button>
                     )}
                 </div>
