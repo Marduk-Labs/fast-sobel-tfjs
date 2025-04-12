@@ -12,54 +12,154 @@ export async function tensorToImageData(
     tensor: tf.Tensor3D,
     normalize: boolean = true
 ): Promise<ImageData> {
-    const [height, width, channels] = tensor.shape;
-    let imageTensor = tensor;
+    // Ensure the tensor has the correct number of dimensions
+    const shape = tensor.shape;
+    console.log("Input tensor shape in tensorToImageData:", shape);
 
-    if (normalize) {
-        // Normalize to 0-255 range
-        imageTensor = normalizeTensor(tensor, 0, 255) as tf.Tensor3D;
-    }
+    // If it's not a 3D tensor, try to reshape it
+    let processedTensor = tensor;
+    let disposeTensor = false;
 
-    // Cast to int32 to ensure values are in the correct range
-    const intTensor = imageTensor.clipByValue(0, 255).cast('int32');
+    try {
+        if (shape.length !== 3) {
+            console.warn(`Expected 3D tensor but got ${shape.length}D tensor. Attempting to reshape.`);
 
-    // Get the data as a typed array
-    const data = await intTensor.data();
-
-    // Create the appropriate array for ImageData
-    const pixelArray = new Uint8ClampedArray(width * height * 4);
-
-    // Fill the array based on the number of channels in the tensor
-    if (channels === 1) {
-        // Grayscale to RGBA
-        for (let i = 0; i < height * width; i++) {
-            const value = data[i];
-            pixelArray[i * 4] = value;     // R
-            pixelArray[i * 4 + 1] = value; // G
-            pixelArray[i * 4 + 2] = value; // B
-            pixelArray[i * 4 + 3] = 255;   // A (fully opaque)
+            if (shape.length === 2) {
+                // It's a 2D tensor [height, width], add a channel dimension
+                processedTensor = tf.tidy(() => tensor.expandDims(-1));
+                disposeTensor = true;
+                console.log("Expanded 2D tensor to 3D:", processedTensor.shape);
+            } else if (shape.length === 4 && shape[0] === 1) {
+                // It's a 4D tensor with batch size 1, remove the batch dimension
+                processedTensor = tf.tidy(() => {
+                    // Use squeeze to remove the batch dimension
+                    return tensor.squeeze([0]) as tf.Tensor3D;
+                });
+                disposeTensor = true;
+                console.log("Squeezed 4D tensor to 3D:", processedTensor.shape);
+            } else {
+                throw new Error(`Cannot convert tensor of shape [${shape}] to ImageData`);
+            }
         }
-    } else if (channels === 3) {
-        // RGB to RGBA
-        for (let i = 0; i < height * width; i++) {
-            pixelArray[i * 4] = data[i * 3];       // R
-            pixelArray[i * 4 + 1] = data[i * 3 + 1]; // G
-            pixelArray[i * 4 + 2] = data[i * 3 + 2]; // B
-            pixelArray[i * 4 + 3] = 255;           // A (fully opaque)
+
+        const [height, width, channels] = processedTensor.shape;
+        let imageTensor = processedTensor;
+        let disposeImageTensor = false;
+
+        if (normalize) {
+            // Normalize to 0-255 range
+            console.log("Normalizing tensor to 0-255 range");
+            imageTensor = tf.tidy(() => normalizeTensor(processedTensor, 0, 255)) as tf.Tensor3D;
+            disposeImageTensor = true;
         }
-    } else if (channels === 4) {
-        // Already RGBA
-        pixelArray.set(data);
-    }
 
-    // Clean up intermediate tensors
-    if (imageTensor !== tensor) {
-        imageTensor.dispose();
-    }
-    intTensor.dispose();
+        // Make sure we have at least 1 channel
+        if (channels < 1) {
+            throw new Error(`Tensor must have at least 1 channel but has ${channels}`);
+        }
 
-    // Create and return ImageData
-    return new ImageData(pixelArray, width, height);
+        // Ensure tensor has proper format for display (1, 3, or 4 channels)
+        let displayTensor = imageTensor;
+        let disposeDisplayTensor = false;
+
+        // Handle case where channels don't match expected format
+        if (![1, 3, 4].includes(channels)) {
+            console.warn(`Unusual number of channels: ${channels}. Converting to grayscale.`);
+            // Convert to grayscale (1 channel)
+            displayTensor = tf.tidy(() => tf.mean(imageTensor, -1, true)) as tf.Tensor3D;
+            disposeDisplayTensor = true;
+            console.log("Converted to grayscale, shape:", displayTensor.shape);
+        }
+
+        // Print some tensor stats for debugging
+        tf.tidy(() => {
+            const minVal = tf.min(displayTensor).dataSync()[0];
+            const maxVal = tf.max(displayTensor).dataSync()[0];
+            const meanVal = tf.mean(displayTensor).dataSync()[0];
+            console.log(`Tensor stats - Min: ${minVal}, Max: ${maxVal}, Mean: ${meanVal}`);
+        });
+
+        // Cast to int32 to ensure values are in the correct range
+        console.log("Casting to int32 and clipping to 0-255");
+        const intTensor = tf.tidy(() => displayTensor.clipByValue(0, 255).cast('int32'));
+
+        // Get the data as a typed array
+        console.log("Converting tensor to typed array");
+        const data = await intTensor.data();
+        console.log(`Data array length: ${data.length}, expected: ${width * height * displayTensor.shape[2]}`);
+
+        // Sample some values to check
+        console.log("Data sample:", data.slice(0, 20));
+
+        const finalChannels = displayTensor.shape[2];
+
+        // Create the appropriate array for ImageData
+        console.log(`Creating Uint8ClampedArray for ${width}x${height} image with ${finalChannels} channels`);
+        const pixelArray = new Uint8ClampedArray(width * height * 4);
+
+        // Fill the array based on the number of channels in the tensor
+        if (finalChannels === 1) {
+            // Grayscale to RGBA
+            console.log("Converting grayscale to RGBA");
+            for (let i = 0; i < height * width; i++) {
+                const value = data[i];
+                pixelArray[i * 4] = value;     // R
+                pixelArray[i * 4 + 1] = value; // G
+                pixelArray[i * 4 + 2] = value; // B
+                pixelArray[i * 4 + 3] = 255;   // A (fully opaque)
+            }
+        } else if (finalChannels === 3) {
+            // RGB to RGBA
+            console.log("Converting RGB to RGBA");
+            for (let i = 0; i < height * width; i++) {
+                pixelArray[i * 4] = data[i * 3];       // R
+                pixelArray[i * 4 + 1] = data[i * 3 + 1]; // G
+                pixelArray[i * 4 + 2] = data[i * 3 + 2]; // B
+                pixelArray[i * 4 + 3] = 255;           // A (fully opaque)
+            }
+        } else if (finalChannels === 4) {
+            // RGBA data needs explicit conversion from Int32Array to Uint8
+            console.log("Converting RGBA Int32Array to Uint8");
+            for (let i = 0; i < data.length; i++) {
+                pixelArray[i] = data[i];  // Uint8ClampedArray will automatically clamp to 0-255
+            }
+
+            // Verify alpha channel
+            let alphaSum = 0;
+            for (let i = 3; i < pixelArray.length; i += 4) {
+                alphaSum += pixelArray[i];
+            }
+            console.log(`Alpha channel average: ${alphaSum / (width * height)}`);
+        }
+
+        // Check for zeros in the pixel array
+        const nonZeroPixels = Array.from(pixelArray).filter(val => val > 0).length;
+        const total = pixelArray.length;
+        console.log(`Non-zero pixels: ${nonZeroPixels} out of ${total} (${(nonZeroPixels / total * 100).toFixed(2)}%)`);
+
+        // Clean up intermediate tensors
+        intTensor.dispose();
+        if (disposeDisplayTensor) {
+            displayTensor.dispose();
+        }
+        if (disposeImageTensor && imageTensor !== displayTensor) {
+            imageTensor.dispose();
+        }
+        if (disposeTensor && processedTensor !== imageTensor) {
+            processedTensor.dispose();
+        }
+
+        // Create and return ImageData
+        console.log(`Creating ImageData object with dimensions ${width}x${height}`);
+        return new ImageData(pixelArray, width, height);
+    } catch (error) {
+        // Clean up in case of error
+        if (disposeTensor && processedTensor !== tensor) {
+            processedTensor.dispose();
+        }
+        console.error("Error in tensorToImageData:", error);
+        throw error;
+    }
 }
 
 /**
