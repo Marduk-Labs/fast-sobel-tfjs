@@ -25,6 +25,7 @@
     "build": "tsc",
     "prepare": "npm run build",
     "start:browser": "npm run build && parcel --target browser-demo",
+    "start:react": "cd examples/react-vite && npm run dev",
     "build:gh-pages": "npm run build && PARCEL_WORKERS=0 parcel build --target browser-demo",
     "predeploy": "npm run build:gh-pages",
     "deploy": "gh-pages -d docs"
