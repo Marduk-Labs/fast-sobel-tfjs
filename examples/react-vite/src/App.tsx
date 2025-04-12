@@ -1,9 +1,11 @@
 import * as tf from '@tensorflow/tfjs'
 import { useEffect, useState } from 'react'
 import ImageProcessor from './components/ImageProcessor'
+import VideoProcessor from './components/VideoProcessor'
 
 function App() {
     const [tfReady, setTfReady] = useState(false)
+    const [activeTab, setActiveTab] = useState<'image' | 'video'>('image')
 
     useEffect(() => {
         // Initialize TensorFlow.js
@@ -18,7 +20,7 @@ function App() {
 
     return (
         <main className="min-h-screen p-6 md:p-12">
-            <header className="text-center max-w-4xl mx-auto mb-16">
+            <header className="text-center max-w-4xl mx-auto mb-8">
                 <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-white to-accent-light bg-clip-text text-transparent">
                     Sobel Edge Detection
                 </h1>
@@ -33,7 +35,26 @@ function App() {
                     <p className="mt-4 text-lg text-gray-300">Initializing TensorFlow.js...</p>
                 </div>
             ) : (
-                <ImageProcessor />
+                <>
+                    <div className="max-w-6xl mx-auto mb-8">
+                        <div className="flex border-b border-gray-700">
+                            <button
+                                className={`px-6 py-3 focus:outline-none ${activeTab === 'image' ? 'text-accent border-b-2 border-accent font-medium' : 'text-gray-400 hover:text-gray-200'}`}
+                                onClick={() => setActiveTab('image')}
+                            >
+                                Image Processing
+                            </button>
+                            <button
+                                className={`px-6 py-3 focus:outline-none ${activeTab === 'video' ? 'text-accent border-b-2 border-accent font-medium' : 'text-gray-400 hover:text-gray-200'}`}
+                                onClick={() => setActiveTab('video')}
+                            >
+                                Video Processing
+                            </button>
+                        </div>
+                    </div>
+
+                    {activeTab === 'image' ? <ImageProcessor /> : <VideoProcessor />}
+                </>
             )}
 
             <footer className="mt-8 text-center text-sm text-gray-500">
