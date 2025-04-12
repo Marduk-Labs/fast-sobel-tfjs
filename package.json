@@ -1,0 +1,56 @@
+{
+  "name": "sobel-tfjs",
+  "version": "1.0.0",
+  "description": "Sobel edge detection filter using TensorFlow.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "homepage": "https://catorch.github.io/sobel-ts/",
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/sobel.js",
+    "dist/sobel.d.ts",
+    "dist/types.js",
+    "dist/types.d.ts"
+  ],
+  "targets": {
+    "browser-demo": {
+      "source": "examples/browser/index.html",
+      "distDir": "docs",
+      "publicUrl": "./",
+      "isLibrary": false
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "start:browser": "npm run build && parcel --target browser-demo",
+    "build:gh-pages": "npm run build && PARCEL_WORKERS=0 parcel build --target browser-demo",
+    "predeploy": "npm run build:gh-pages",
+    "deploy": "gh-pages -d docs"
+  },
+  "keywords": [
+    "sobel",
+    "edge-detection",
+    "image-processing",
+    "computer-vision",
+    "typescript"
+  ],
+  "author": "catorch",
+  "license": "MIT",
+  "devDependencies": {
+    "@parcel/transformer-html": "^2.14.4",
+    "@parcel/transformer-typescript-tsc": "^2.14.4",
+    "@parcel/transformer-typescript-types": "^2.14.4",
+    "@types/node": "^22.14.1",
+    "buffer": "^6.0.3",
+    "gh-pages": "^6.1.1",
+    "parcel": "^2.14.4",
+    "process": "^0.11.10",
+    "svgo": "^3.3.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0"
+  }
+}
