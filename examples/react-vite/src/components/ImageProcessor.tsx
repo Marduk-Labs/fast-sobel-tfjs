@@ -182,9 +182,40 @@ const ImageProcessor = () => {
         setFileName('sample.jpg');
     };
 
-    // Replace the loadSampleImage function
     const loadSampleImage = () => {
-        createSampleImage();
+        const imgPath = '/sobel-tfjs/pugs.jpg';
+        console.log(`[IMAGE] Loading sample image from: ${imgPath}`);
+
+        // Load the image directly
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        // Handle loading errors by falling back to createSampleImage
+        img.onerror = () => {
+            console.warn(`[IMAGE] Failed to load sample from ${imgPath}, falling back to generated image`);
+            createSampleImage();
+        };
+
+        img.onload = () => {
+            console.log(`[IMAGE] Sample image loaded successfully: ${img.width}x${img.height}`);
+            setOriginalImage(img);
+            setOriginalImageUrl(img.src);
+            setFileName('pugs.jpg');
+
+            // Draw original image on canvas
+            if (originalCanvasRef.current) {
+                const canvas = originalCanvasRef.current;
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                }
+            }
+        };
+
+        img.src = imgPath;
     };
 
     // Process the image with Sobel filter
