@@ -27,6 +27,11 @@ const VideoProcessor = () => {
     // Sobel filter instance
     const sobelFilterRef = useRef<SobelFilter | null>(null);
 
+    // Helper function to detect mobile devices
+    const isMobileDevice = () => {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+
     // Handle document visibility change
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -81,8 +86,10 @@ const VideoProcessor = () => {
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
             console.log(`[DEVICES] Found ${videoDevices.length} video devices:`, videoDevices);
             setAvailableDevices(videoDevices);
-            // Set the first device as default if none is selected and devices are available
+
+            // If we don't have a current device selected yet, try to find an environment camera
             if (videoDevices.length > 0 && !currentDeviceId) {
+                // We'll set a device ID, but we'll prefer the environment camera when starting the stream
                 console.log(`[DEVICES] Setting default deviceId: ${videoDevices[0].deviceId}`);
                 setCurrentDeviceId(videoDevices[0].deviceId);
             }
@@ -99,12 +106,61 @@ const VideoProcessor = () => {
 
     // Switch to the next available camera
     const switchCamera = async () => {
+        console.log("[DEVICES] Attempting to switch camera...");
+
+        // On mobile devices, simply toggle between front and back camera using facingMode
+        if (isMobileDevice()) {
+            // Determine if we're currently using the front or back camera
+            let currentFacingMode = 'environment'; // Default to assuming we're using the back camera
+
+            // If we have an active video track, try to determine its facing mode
+            if (videoRef.current?.srcObject) {
+                const stream = videoRef.current.srcObject as MediaStream;
+                const videoTrack = stream.getVideoTracks()[0];
+
+                if (videoTrack) {
+                    const settings = videoTrack.getSettings();
+                    console.log("[DEVICES] Current video track settings:", settings);
+
+                    // If facingMode is available directly
+                    if (settings.facingMode) {
+                        currentFacingMode = settings.facingMode;
+                    }
+                    // Otherwise try to guess from the label
+                    else if (videoTrack.label) {
+                        const label = videoTrack.label.toLowerCase();
+                        if (label.includes('front') || label.includes('user') || label.includes('selfie')) {
+                            currentFacingMode = 'user';
+                        }
+                    }
+                }
+            }
+
+            // Toggle facing mode
+            const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            console.log(`[DEVICES] Switching from ${currentFacingMode} to ${newFacingMode} camera`);
+
+            // Stop current stream
+            stopStream();
+
+            // Since we're modifying the currentDeviceId, we need to ensure startStream will use our facingMode
+            // Set to undefined to force using facingMode in the constraints
+            setCurrentDeviceId(undefined);
+
+            // Short delay to ensure stream is fully stopped
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Start with the specified facing mode
+            await startStream(newFacingMode);
+            return;
+        }
+
+        // Traditional device switching (for desktop)
         if (availableDevices.length <= 1) {
             console.log("[DEVICES] No other camera to switch to.");
             return; // No other devices to switch to
         }
 
-        console.log("[DEVICES] Attempting to switch camera...");
         const currentIndex = availableDevices.findIndex(device => device.deviceId === currentDeviceId);
         const nextIndex = (currentIndex + 1) % availableDevices.length;
         const nextDevice = availableDevices[nextIndex];
@@ -117,16 +173,15 @@ const VideoProcessor = () => {
         setCurrentDeviceId(nextDevice.deviceId);
 
         // Give the stream a moment to fully stop before restarting
-        // This can sometimes help avoid race conditions
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Restart the stream with the new device ID
         console.log("[DEVICES] Restarting stream with new device...");
-        startStream();
+        await startStream();
     };
 
     // Start the webcam stream
-    const startStream = async () => {
+    const startStream = async (facingMode?: string) => {
         try {
             console.log("[WEBCAM] Requesting camera access");
             setError(null);
@@ -143,25 +198,66 @@ const VideoProcessor = () => {
                     console.error("[WEBCAM] No camera devices found after loading.");
                     return;
                 }
-                // If devices were loaded, currentDeviceId should now be set by loadDevices
-                // If not, we'll rely on the default behavior below
             }
 
-            console.log(`[WEBCAM] Using deviceId: ${currentDeviceId || 'default'}`);
+            // If this is the first time starting the stream, try to use the environment camera
+            const isFirstStart = !videoRef.current?.srcObject;
 
-            const constraints: MediaStreamConstraints = {
-                video: {
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    // Specify the exact device ID if one is selected
-                    ...(currentDeviceId && { deviceId: { exact: currentDeviceId } })
-                }
-            };
+            let constraints: MediaStreamConstraints;
+
+            if (isFirstStart) {
+                console.log("[WEBCAM] First start - attempting to use environment-facing camera");
+                // For first start, try to get the environment-facing camera
+                constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: { ideal: facingMode || 'environment' }
+                    }
+                };
+            } else if (currentDeviceId) {
+                // If we're switching cameras, use the specific device ID
+                console.log(`[WEBCAM] Using specific deviceId: ${currentDeviceId}`);
+                constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        deviceId: { exact: currentDeviceId }
+                    }
+                };
+            } else {
+                // Fallback to default
+                console.log(`[WEBCAM] Using default camera`);
+                constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                };
+            }
 
             console.log("[WEBCAM] Using constraints:", constraints);
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             console.log("[WEBCAM] Camera access granted");
+
+            // After camera permission is granted, refresh the device list
+            // This is critical for iOS Safari where devices aren't fully enumerated until after permission
+            console.log("[WEBCAM] Reloading device list after permission granted");
+            await loadDevices();
+
+            // If this was the first start with environment camera, get the actual device ID used
+            if (isFirstStart) {
+                const streamTrack = stream.getVideoTracks()[0];
+                if (streamTrack) {
+                    const settings = streamTrack.getSettings();
+                    console.log("[WEBCAM] Got stream with settings:", settings);
+                    if (settings.deviceId) {
+                        console.log(`[WEBCAM] Updating current device ID to: ${settings.deviceId}`);
+                        setCurrentDeviceId(settings.deviceId);
+                    }
+                }
+            }
 
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
@@ -428,7 +524,7 @@ const VideoProcessor = () => {
                             {!isStreaming && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70">
                                     <button
-                                        onClick={startStream}
+                                        onClick={() => startStream()}
                                         className="px-4 py-2 bg-accent text-white rounded shadow hover:bg-accent-light transition-colors"
                                     >
                                         Start Camera
@@ -559,14 +655,15 @@ const VideoProcessor = () => {
                         </button>
                     ) : (
                         <button
-                            onClick={startStream}
+                            onClick={() => startStream()}
                             className="px-4 py-2 bg-accent text-white rounded shadow hover:bg-accent-light transition-colors"
                         >
                             Start Camera
                         </button>
                     )}
 
-                    {availableDevices.length > 1 && (
+                    {/* Switch Camera Button - show if multiple devices detected OR on mobile */}
+                    {(availableDevices.length > 1 || isMobileDevice()) && (
                         <button
                             onClick={switchCamera}
                             className="px-4 py-2 bg-sky-500 text-white rounded shadow hover:bg-sky-400 transition-colors flex items-center gap-2"
@@ -574,7 +671,7 @@ const VideoProcessor = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                             </svg>
-                            Switch Camera ({availableDevices.findIndex(d => d.deviceId === currentDeviceId) + 1}/{availableDevices.length})
+                            Switch Camera
                         </button>
                     )}
                 </div>
