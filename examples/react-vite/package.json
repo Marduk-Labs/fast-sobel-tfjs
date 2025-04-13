@@ -16,7 +16,8 @@
         "@tensorflow/tfjs": "^4.22.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "sobel-tfjs": "file:../../"
+        "sobel-tfjs": "file:../../",
+        "sobel-ts": "^1.0.2"
     },
     "devDependencies": {
         "@types/react": "^18.2.64",
