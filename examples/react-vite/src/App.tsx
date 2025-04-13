@@ -1,11 +1,12 @@
 import * as tf from '@tensorflow/tfjs'
 import { useEffect, useState } from 'react'
+import BenchmarkPage from './components/BenchmarkPage'
 import ImageProcessor from './components/ImageProcessor'
 import VideoProcessor from './components/VideoProcessor'
 
 function App() {
     const [tfReady, setTfReady] = useState(false)
-    const [activeTab, setActiveTab] = useState<'image' | 'video'>('image')
+    const [activeTab, setActiveTab] = useState<'image' | 'video' | 'benchmark'>('image')
 
     useEffect(() => {
         // Initialize TensorFlow.js
@@ -50,10 +51,18 @@ function App() {
                             >
                                 Video Processing
                             </button>
+                            <button
+                                className={`px-6 py-3 focus:outline-none ${activeTab === 'benchmark' ? 'text-accent border-b-2 border-accent font-medium' : 'text-gray-400 hover:text-gray-200'}`}
+                                onClick={() => setActiveTab('benchmark')}
+                            >
+                                Benchmark
+                            </button>
                         </div>
                     </div>
 
-                    {activeTab === 'image' ? <ImageProcessor /> : <VideoProcessor />}
+                    {activeTab === 'image' && <ImageProcessor />}
+                    {activeTab === 'video' && <VideoProcessor />}
+                    {activeTab === 'benchmark' && <BenchmarkPage />}
                 </>
             )}
 
