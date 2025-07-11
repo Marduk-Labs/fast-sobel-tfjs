@@ -1,8 +1,8 @@
 {
-  "name": "sobel-tfjs-example-react-vite",
+  "name": "fast-sobel-tfjs-example-react-vite",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://marduk-labs.github.io/sobel-tfjs/",
+  "homepage": "https://catorch.github.io/fast-sobel-tfjs/",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

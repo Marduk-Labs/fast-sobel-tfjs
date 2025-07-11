@@ -8,6 +8,19 @@
 
 Blazing fast edge detection that runs on GPU via WebGL, with fallback to CPU. Perfect for real-time image processing, computer vision applications, and creative coding projects.
 
+## 🎮 **Live Demo & Benchmark**
+
+**📱 [Try the Interactive Demo](https://catorch.github.io/fast-sobel-tfjs/)**
+
+Our live demo showcases all the capabilities of Fast Sobel TFJS:
+
+- **🖼️ Image Processing**: Upload your own images and see real-time edge detection
+- **📹 Video Processing**: Live webcam processing with adjustable parameters
+- **⚡ Performance Benchmark**: Compare GPU vs CPU performance across different image sizes
+- **🎛️ Interactive Controls**: Adjust kernel size, output format, and enhancement settings
+
+**Benchmark Results**: See 5-10x performance improvements with GPU acceleration compared to CPU-only implementations.
+
 ## ⚡ Performance
 
 - **5-10x faster** than CPU-only implementations

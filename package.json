@@ -15,7 +15,9 @@
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "start:react": "cd examples/react-vite && npm run dev"
+    "start:react": "cd examples/react-vite && npm run dev",
+    "build:demo": "npm run build && cd examples/react-vite && npm run build",
+    "deploy:demo": "npm run build:demo && cd examples/react-vite && npm run preview"
   },
   "keywords": [
     "sobel",
