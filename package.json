@@ -1,57 +1,52 @@
 {
-  "name": "sobel-tfjs",
-  "version": "1.0.0",
-  "description": "Sobel edge detection filter using TensorFlow.js",
+  "name": "fast-sobel-tfjs",
+  "version": "0.9.0",
+  "description": "GPU-accelerated Sobel edge detection for images & video, powered by TensorFlow.js",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "homepage": "https://catorch.github.io/sobel-ts/",
+  "homepage": "https://catorch.github.io/fast-sobel-tfjs/",
   "files": [
-    "dist/index.js",
-    "dist/index.d.ts",
-    "dist/sobel.js",
-    "dist/sobel.d.ts",
-    "dist/types.js",
-    "dist/types.d.ts"
+    "dist"
   ],
-  "targets": {
-    "browser-demo": {
-      "source": "examples/browser/index.html",
-      "distDir": "docs",
-      "publicUrl": "./",
-      "isLibrary": false
-    }
-  },
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "start:browser": "npm run build && parcel --target browser-demo",
-    "start:react": "cd examples/react-vite && npm run dev",
-    "build:gh-pages": "npm run build && PARCEL_WORKERS=0 parcel build --target browser-demo",
-    "predeploy": "npm run build:gh-pages",
-    "deploy": "gh-pages -d docs"
+    "start:react": "cd examples/react-vite && npm run dev"
   },
   "keywords": [
     "sobel",
     "edge-detection",
+    "gpu",
+    "tfjs",
     "image-processing",
+    "webgl",
+    "wasm",
     "computer-vision",
     "typescript"
   ],
   "author": "catorch",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/catorch/fast-sobel-tfjs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/catorch/fast-sobel-tfjs/issues"
+  },
   "devDependencies": {
-    "@parcel/transformer-html": "^2.14.4",
-    "@parcel/transformer-typescript-tsc": "^2.14.4",
-    "@parcel/transformer-typescript-types": "^2.14.4",
     "@types/node": "^22.14.1",
-    "buffer": "^6.0.3",
-    "gh-pages": "^6.3.0",
-    "parcel": "^2.14.4",
-    "process": "^0.11.10",
+    "sobel-ts": "^1.0.0",
     "svgo": "^3.3.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

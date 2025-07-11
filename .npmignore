@@ -1,0 +1,24 @@
+# Examples and development files
+examples/
+*.Zone.Identifier
+
+# Development and build files
+src/
+tests/
+tsconfig.json
+.parcel-cache/
+node_modules/
+
+# Git and editor files
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Documentation (keep README.md)
+*.md
+!README.md
+
+# Package manager files
+package-lock.json
+yarn.lock 
