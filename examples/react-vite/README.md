@@ -74,4 +74,4 @@ The image processing workflow is:
 ## Notes
 
 - This example uses a local version of the Fast Sobel TFJS library (via `"file:../../"` in package.json)
-- In a real-world application, you would install the library from npm: `npm install fast-sobel-tfjs`
+- In a real-world application, you would install the library from npm: `npm install @marduk-labs/fast-sobel-tfjs`
