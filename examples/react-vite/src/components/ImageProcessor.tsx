@@ -2,7 +2,7 @@ import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { KernelSize, OutputFormat, SobelFilter } from "fast-sobel-tfjs";
 
 // A simple embedded grayscale data URI of a placeholder image
-const SAMPLE_IMAGE_URL = "/pugs.jpg";
+const SAMPLE_IMAGE_URL = "/fast-sobel-tfjs/pugs.jpg";
 
 // Helper function to enhance contrast of the result image
 const enhanceContrast = (
@@ -194,7 +194,7 @@ const ImageProcessor = () => {
   };
 
   const loadSampleImage = () => {
-    const imgPath = "/sobel-tfjs/pugs.jpg";
+    const imgPath = SAMPLE_IMAGE_URL;
     console.log(`[IMAGE] Loading sample image from: ${imgPath}`);
 
     // Load the image directly
