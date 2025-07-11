@@ -9,6 +9,11 @@ tsconfig.json
 .parcel-cache/
 node_modules/
 
+# Demo and browser bundles (should not be in npm package)
+dist/browser.*
+dist/*.html
+dist/*.map
+
 # Git and editor files
 .git/
 .gitignore
