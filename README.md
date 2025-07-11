@@ -10,7 +10,7 @@ Blazing fast edge detection that runs on GPU via WebGL, with fallback to CPU. Pe
 
 ## 🎮 **Live Demo & Benchmark**
 
-**📱 [Try the Interactive Demo](https://catorch.github.io/fast-sobel-tfjs/)**
+**📱 [Try the Interactive Demo](https://marduk-labs.github.io/sobel-tfjs/)**
 
 Our live demo showcases all the capabilities of Fast Sobel TFJS:
 
@@ -325,8 +325,8 @@ Contributions are welcome! Please read our contributing guidelines and submit pu
 ### Development Setup
 
 ```bash
-git clone https://github.com/catorch/fast-sobel-tfjs.git
-cd fast-sobel-tfjs
+git clone https://github.com/Marduk-Labs/sobel-tfjs.git
+cd sobel-tfjs
 npm install
 npm run build
 ```
@@ -348,5 +348,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 </p>
 
 <p align="center">
-  Made with ❤️ by <a href="https://github.com/catorch">catorch</a>
+  Made with ❤️ by <a href="https://github.com/Marduk-Labs">Marduk Labs</a>
 </p>

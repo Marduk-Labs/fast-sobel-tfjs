@@ -194,7 +194,7 @@ const ImageProcessor = () => {
   };
 
   const loadSampleImage = () => {
-    const imgPath = "/fast-sobel-tfjs/pugs.jpg";
+    const imgPath = "/sobel-tfjs/pugs.jpg";
     console.log(`[IMAGE] Loading sample image from: ${imgPath}`);
 
     // Load the image directly

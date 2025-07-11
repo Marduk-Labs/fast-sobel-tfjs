@@ -8,7 +8,7 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "homepage": "https://catorch.github.io/fast-sobel-tfjs/",
+  "homepage": "https://marduk-labs.github.io/sobel-tfjs/",
   "files": [
     "dist"
   ],
@@ -34,10 +34,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/catorch/fast-sobel-tfjs.git"
+    "url": "https://github.com/Marduk-Labs/sobel-tfjs.git"
   },
   "bugs": {
-    "url": "https://github.com/catorch/fast-sobel-tfjs/issues"
+    "url": "https://github.com/Marduk-Labs/sobel-tfjs/issues"
   },
   "peerDependencies": {
     "@tensorflow/tfjs": ">=4"
