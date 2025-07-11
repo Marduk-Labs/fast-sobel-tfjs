@@ -1,6 +1,6 @@
 {
   "name": "fast-sobel-tfjs",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "GPU-accelerated Sobel edge detection for TensorFlow.js - 5-10x faster than CPU implementations",
   "type": "module",
   "main": "dist/index.js",
